@@ -332,6 +332,9 @@ _syscall5(int, sys_statx, int, dirfd, const char *, pathname, int, flags,
 int open_symbolized(const char *ptah, int oflag, mode_t mode);
 ssize_t read_symbolized(int fildes, void *buf, size_t nbyte);
 uint64_t lseek64_symbolized(int fd, uint64_t offset, int whence);
+int accept4_symbolized(int sockfd, struct sockaddr* addr, socklen_t* addrlen, int flags);
+ssize_t recvfrom_symbolized(int sockfd, void* buf, size_t len, int flags, struct sockaddr* src_addr, socklen_t* addrlen);
+ssize_t recvmsg_symbolized(int sockfd, struct msghdr *msg, int flags);
 
 static bitmask_transtbl fcntl_flags_tbl[] = {
   { TARGET_O_ACCMODE,   TARGET_O_WRONLY,    O_ACCMODE,   O_WRONLY,    },
@@ -2890,7 +2893,7 @@ static abi_long do_sendrecvmsg_locked(int fd, struct target_msghdr *msgp,
             }
         }
     } else {
-        ret = get_errno(safe_recvmsg(fd, &msg, flags));
+        ret = get_errno(recvmsg_symbolized(fd, &msg, flags));
         if (!is_error(ret)) {
             len = ret;
             if (fd_trans_host_to_target_data(fd)) {
@@ -2997,7 +3000,7 @@ static abi_long do_accept4(int fd, abi_ulong target_addr,
     host_flags = target_to_host_bitmask(flags, fcntl_flags_tbl);
 
     if (target_addr == 0) {
-        return get_errno(safe_accept4(fd, NULL, NULL, host_flags));
+        return get_errno(accept4_symbolized(fd, NULL, NULL, host_flags));
     }
 
     /* linux returns EINVAL if addrlen pointer is invalid */
@@ -3014,7 +3017,7 @@ static abi_long do_accept4(int fd, abi_ulong target_addr,
     addr = alloca(addrlen);
 
     ret_addrlen = addrlen;
-    ret = get_errno(safe_accept4(fd, addr, &ret_addrlen, host_flags));
+    ret = get_errno(accept4_symbolized(fd, addr, &ret_addrlen, host_flags));
     if (!is_error(ret)) {
         host_to_target_sockaddr(target_addr, addr, MIN(addrlen, ret_addrlen));
         if (put_user_u32(ret_addrlen, target_addrlen_addr)) {
@@ -3172,12 +3175,12 @@ static abi_long do_recvfrom(int fd, abi_ulong msg, size_t len, int flags,
         }
         addr = alloca(addrlen);
         ret_addrlen = addrlen;
-        ret = get_errno(safe_recvfrom(fd, host_msg, len, flags,
+        ret = get_errno(recvfrom_symbolized(fd, host_msg, len, flags,
                                       addr, &ret_addrlen));
     } else {
         addr = NULL; /* To keep compiler quiet.  */
         addrlen = 0; /* To keep compiler quiet.  */
-        ret = get_errno(safe_recvfrom(fd, host_msg, len, flags, NULL, 0));
+        ret = get_errno(recvfrom_symbolized(fd, host_msg, len, flags, NULL, 0));
     }
     if (!is_error(ret)) {
         if (fd_trans_host_to_target_data(fd)) {
