@@ -13,7 +13,6 @@ import sys
 import tempfile
 import time
 
-#import pyinotify
 from executor import Executor
 from minimizer import TestcaseMinimizer
 from utils import *

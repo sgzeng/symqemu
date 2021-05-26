@@ -17,7 +17,6 @@ try:
    import queue
 except ImportError:
    import Queue as queue
-import pyinotify
 
 import executor as executor
 import minimizer as minimizer
@@ -163,7 +162,7 @@ class AFLExecutor(object):
         self.tmp_explore_dir = tempfile.mkdtemp()
         cmd, afl_path, qemu_mode = self.parse_fuzzer_stats()
         self.minimizer = minimizer.TestcaseMinimizer(
-            cmd, afl_path, self.output, qemu_mode)
+            cmd, afl_path, self.output, qemu_mode, self.source_opts)
         self.import_state()
         self.make_dirs()
         atexit.register(self.cleanup)

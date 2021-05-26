@@ -5,6 +5,7 @@ import subprocess as sp
 import tempfile
 import hashlib
 import utils as utils
+from utils import *
 
 # status for TestCaseMinimizer
 NEW = 0
@@ -23,18 +24,17 @@ def write_bitmap_file(bitmap_file, bitmap):
         f.write(''.join(map(str, bitmap)))
 
 class TestcaseMinimizer(object):
-    def __init__(self, cmd, afl_path, out_dir, qemu_mode, map_size=MAP_SIZE):
+    def __init__(self, cmd, afl_path, out_dir, qemu_mode, source, map_size=MAP_SIZE):
         self.cmd = cmd
         self.qemu_mode = qemu_mode
+        self.source_opts = source
         self.seedsMap = {}
         self.showmap = os.path.join(afl_path, "afl-showmap")
         self.bitmap_file = os.path.join(out_dir, "afl-bitmap")
-        self.crash_bitmap_file = os.path.join(out_dir, "afl-crash-bitmap")
         _, self.temp_file = tempfile.mkstemp(dir=out_dir)
         atexit.register(self.cleanup)
 
         self.bitmap = self.initialize_bitmap(self.bitmap_file, map_size)
-        self.crash_bitmap = self.initialize_bitmap(self.crash_bitmap_file, map_size)
 
     def initialize_bitmap(self, filename, map_size):
         if os.path.exists(filename):
@@ -51,39 +51,39 @@ class TestcaseMinimizer(object):
     def check_testcase(self, testcase):
         md5 = self.compute_hash(testcase)
         is_new_content = (md5 not in self.seedsMap)
-        cmd = [self.showmap,
-               "-t",
-               str(TIMEOUT),
-               "-m", "256T", # for ffmpeg
-               "-b" # binary mode
-        ]
+        is_interesting = True
+        # aflnwe haven't implemented showmap, any new seed will be count in
+        if self.source_opts != SOURCE_NET:
+            cmd = [self.showmap,
+                "-t",
+                str(TIMEOUT),
+                "-m", "256T", # for ffmpeg
+                "-b" # binary mode
+            ]
 
-        if self.qemu_mode:
-            cmd += ['-Q']
+            if self.qemu_mode:
+                cmd += ['-Q']
 
-        cmd += ["-o",
-               self.temp_file,
-               "--"
-        ] + self.cmd
+            cmd += ["-o",
+                self.temp_file,
+                "--"
+            ] + self.cmd
 
-        cmd, stdin = utils.fix_at_file(cmd, testcase)
-        with open(os.devnull, "wb") as devnull:
-            proc = sp.Popen(cmd, stdin=sp.PIPE, stdout=devnull, stderr=devnull)
-            proc.communicate(stdin)
-        this_bitmap = read_bitmap_file(self.temp_file)
-        is_interesting = self.is_interesting_testcase(this_bitmap, proc.returncode)
+            cmd, stdin = fix_at_file(cmd, testcase)
+            print(" ".join(cmd))
+            with open(os.devnull, "wb") as devnull:
+                proc = sp.Popen(cmd, stdin=sp.PIPE, stdout=devnull, stderr=devnull)
+                proc.communicate(stdin)
+            this_bitmap = read_bitmap_file(self.temp_file)
+            is_interesting = self.is_interesting_testcase(this_bitmap, proc.returncode)
         return is_new_content and is_interesting
 
     def compute_hash(self, testcase):
         return hashlib.md5(open(testcase,'rb').read()).hexdigest()
 
     def is_interesting_testcase(self, bitmap, returncode):
-        if returncode == 0:
-            my_bitmap = self.bitmap
-            my_bitmap_file = self.bitmap_file
-        else:
-            my_bitmap = self.crash_bitmap
-            my_bitmap_file = self.crash_bitmap_file
+        my_bitmap = self.bitmap
+        my_bitmap_file = self.bitmap_file
 
         # Maybe need to port in C to speed up
         interesting = False

@@ -10,15 +10,11 @@ import time
 import threading
 import socket
 
-import utils as utils
+from utils import *
 
 l = logging.getLogger('qsym.Executor')
 US_TO_S = float(1000 ** 2)
 LOG_SMT_HEADER = " [STAT] SMT:"
-
-SOURCE_STDIN = 0
-SOURCE_FILE = 1
-SOURCE_NET = 2
 
 class ExecutorResult(object):
     def __init__(self, start_time, end_time, returncode, log):
@@ -182,7 +178,7 @@ class Executor(object):
         return next_testcase_dir
 
     def set_opts(self):
-        self.cmd, self.stdin = utils.fix_at_file(self.cmd, self.input_file)
+        self.cmd, self.stdin = fix_at_file(self.cmd, self.input_file)
 
     def get_testcases(self):
         for name in sorted(os.listdir(self.testcase_dir)):

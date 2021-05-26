@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 
 import copy
-import os
-import shutil
 import subprocess
 import sys
 import termcolor
 
 AT_FILE = "@@"
+SOURCE_STDIN = 0
+SOURCE_FILE = 1
+SOURCE_NET = 2
 
 def FATAL(msg):
     print(termcolor.colored(msg, 'red'))
