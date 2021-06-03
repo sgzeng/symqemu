@@ -97,7 +97,8 @@ class Executor(object):
 
     def gen_env(self):
         symqemu_env = os.environ.copy()
-        symqemu_env["SYMCC_INPUT_FILE"] = self.input_file
+        if self.source_opts == SOURCE_NET:
+            symqemu_env["SYMCC_INPUT_FILE"] = self.input_file
         symqemu_env["SYMCC_OUTPUT_DIR"] = self.testcase_dir
         symqemu_env["SYMCC_LOG_FILE"] = self.log_file
         symqemu_env["SYMCC_ENABLE_LINEARIZATION"] = "1"

@@ -425,7 +425,7 @@ class AFLExecutor(object):
             cov_seeds = self.sync_files()
             for cv in cov_seeds:
                 self.state.processed.add(cv)
-                logger.debug("fetching a task from AFL seed queue: " + cv)
+                # logger.debug("fetching a task from AFL seed queue: " + cv)
                 seedBufferQ.put((0, cv))
             # scan from redis db
             task = self.rqueue.get_nowait()
@@ -463,6 +463,7 @@ class AFLExecutor(object):
                     logger.debug("explore_agent: seedBufferQ size: %d" % seedBufferQ.qsize())
                     self.run_explore(follow_input, seedBufferQ)
             time.sleep(5)
+            logger.debug("Sleeping...")
 
     def run(self):
         # initail seed
