@@ -69,12 +69,12 @@ class TestcaseMinimizer(object):
                 "--"
             ] + self.cmd
 
-            cmd, stdin = fix_at_file(cmd, testcase)
-            with open(os.devnull, "wb") as devnull:
-                proc = sp.Popen(cmd, stdin=sp.PIPE, stdout=devnull, stderr=devnull)
-                proc.communicate(stdin)
-            this_bitmap = read_bitmap_file(self.temp_file)
-            is_interesting = self.is_interesting_testcase(this_bitmap, proc.returncode)
+            #cmd, stdin = fix_at_file(cmd, testcase)
+            #with open(os.devnull, "wb") as devnull:
+            #    proc = sp.Popen(cmd, stdin=sp.PIPE, stdout=devnull, stderr=devnull)
+            #    proc.communicate(stdin)
+            #this_bitmap = read_bitmap_file(self.temp_file)
+            #is_interesting = self.is_interesting_testcase(this_bitmap, proc.returncode)
         return is_new_content and is_interesting
 
     def compute_hash(self, testcase):
