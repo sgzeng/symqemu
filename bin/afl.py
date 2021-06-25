@@ -431,9 +431,6 @@ class AFLExecutor(object):
             task = self.rqueue.get_nowait()
             while task:
                 logger.debug("fetching a task from exploit agent: " + str(task))
-                if not self.minimizer.check_testcase(task):
-                    os.unlink(task)
-                    continue
                 self.minimizer.update_seedMap(task)
                 seedinfo = self.rqueue.db.hgetall(task)
                 seedBufferQ.put(seedinfo['priority'], seedinfo)
