@@ -5091,6 +5091,7 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
             if (dflag == MO_16) {
                 tcg_gen_ext16u_tl(s->T0, s->T0);
             }
+            // gen_helper_sym_notify_jmp(s->pc - s->cs_base);
             gen_op_jmp_v(s->T0);
             gen_bnd_jmp(s);
             gen_jr(s, s->T0);
@@ -6623,6 +6624,7 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
         } else if (!CODE64(s)) {
             tval &= 0xffffffff;
         }
+        // gen_helper_sym_notify_jmp(s->pc - s->cs_base);
         gen_bnd_jmp(s);
         gen_jmp(s, tval);
         break;
@@ -6646,6 +6648,7 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
         if (dflag == MO_16) {
             tval &= 0xffff;
         }
+        // gen_helper_sym_notify_jmp(s->pc - s->cs_base);
         gen_jmp(s, tval);
         break;
     case 0x70 ... 0x7f: /* jcc Jb */

@@ -636,6 +636,11 @@ void *HELPER(sym_setcond_i64)(CPUArchState *env,
         env, arg1, arg1_expr, arg2, arg2_expr, cond, result, 64);
 }
 
+void HELPER(sym_notify_jmp)(uint64_t target_address)
+{
+    _sym_notify_jmp(target_address);
+}
+
 void HELPER(sym_notify_call)(uint64_t return_address)
 {
     _sym_notify_call(return_address);
