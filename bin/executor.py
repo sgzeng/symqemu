@@ -45,11 +45,14 @@ class ExecutorResult(object):
         self.solving_time = min(self.solving_time, self.total_time)
 
 class Executor(object):
-    def __init__(self, ce_path, cmd, source, skipEpisodeNum, targetBA, dbNum, deli, plen, input_file, qsym_output_dir, pin_output_dir,
+    def __init__(self, ce_path, cmd, netoptions, skipEpisodeNum, targetBA, dbNum, deli, plen, input_file, qsym_output_dir, pin_output_dir,  
             bitmap=None, argv=None):
         self.ce_path = ce_path
         self.cmd = cmd
-        self.source_opts = source
+        self.source_opts = SOURCE_STDIN
+        if not netoptions is None:
+            self.source_opts = SOURCE_NET
+            self.parse_network_interface(netoptions) 
         self.skipEpisodeNum = str(skipEpisodeNum)
         self.targetBA = targetBA
         self.dbNum = dbNum
@@ -106,13 +109,22 @@ class Executor(object):
             symqemu_env["SYMCC_AFL_COVERAGE_MAP"] = self.bitmap
         return symqemu_env
 
+    def parse_network_interface(self, netoptions):
+        if netoptions is None:
+            return
+        self.transport_layer = netoptions.rpartition('://')[0].strip()
+        self.ip = netoptions.rpartition('://')[-1].split('/')[0].strip()
+        p_str = netoptions.rpartition('://')[-1].split('/')[-1].strip()
+        self.port = int(p_str)
+
     def netSend(self, input, MAXTRY=10):
-        port = 2200
-        ip = '127.0.0.1'
         for i in range(0, MAXTRY):
             try:
-                s = socket.socket(socket.AF_INET,socket.SOCK_STREAM) #tcp
-                s.connect((ip, port))
+                if self.transport_layer == 'tcp':
+                    s = socket.socket(socket.AF_INET,socket.SOCK_STREAM) #tcp
+                else:
+                    s = socket.socket(socket.AF_INET,socket.SOCK_DGRAM) #udp
+                s.connect((self.ip, self.port))
                 s.sendall(input)
                 s.close()
                 return
@@ -127,7 +139,7 @@ class Executor(object):
         l.debug("Executing %s" % ' '.join(cmd))
         proc = subprocess.Popen(cmd, shell=False, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env = self.gen_env())
         if self.source_opts == SOURCE_NET:
-            socketClient = threading.Thread(target=self.netSend, name='socketClient', args=(self.stdin, ))
+            socketClient = threading.Thread(target=self.netSend, name='socketClient', args=(self.stdin,))
             socketClient.start()
             proc.wait()
             socketClient.join()

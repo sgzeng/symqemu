@@ -21,11 +21,12 @@ import afl as afl
 def parse_args():
     p = argparse.ArgumentParser()
     p.add_argument("-o", dest="output", required=True, help="AFL output directory")
+    p.add_argument("-c", dest="clean", default=None, help="clean script after each run")
     p.add_argument("-v", dest="version", required=True, help="RL agent type")
     p.add_argument("-i", dest="input", required=True, help="initial seed directory")
     p.add_argument("-n", dest="name", required=True, help="name of the concolic executor")
     p.add_argument("-p", dest="path", required=True, help="full path of the concolic executor")
-    p.add_argument("-net", dest="source", type=int, default=0, help="whether coming from network socket")
+    p.add_argument("-net", dest="netoptions", default=None, help="client network interface if input coming from network socket")
     p.add_argument("-a", dest="afl", default="afl-master", help="AFL name")
     p.add_argument("-f", dest="filename", default=None)
     p.add_argument("-m", dest="mail", default=None)
@@ -43,9 +44,10 @@ def check_args(args):
 def main():
     args = parse_args()
     check_args(args)
-
-    e = afl.AFLExecutor(args.cmd, args.source, args.input, args.output, args.afl,
-            args.name, args.path, args.version, args.filename, args.mail, args.asan_bin, args.redisDB, args.deli, args.pkglen)
+    if (not args.clean is None) and (not os.path.isfile(args.clean)):
+        args.clean = os.path.join('./', args.clean)
+    e = afl.AFLExecutor(args.cmd, args.netoptions, args.input, args.output, args.afl,
+            args.name, args.path, args.version, args.filename, args.mail, args.asan_bin, args.redisDB, args.deli, args.pkglen, args.clean)
     try:
         e.run()
     finally:

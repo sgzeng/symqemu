@@ -142,11 +142,14 @@ class AFLExecutorState(object):
         return len(self.processed) + len(self.hang) + len(self.done)
 
 class AFLExecutor(object):
-    def __init__(self, cmd, source, input, output, afl, name, ce_path, version, filename=None, mail=None, asan_bin=None, redisDB=None, deli=None, pkglen=None):
+    def __init__(self, cmd, netoptions, input, output, afl, name, ce_path, version, filename=None, mail=None, asan_bin=None, redisDB=None, deli=None, pkglen=None, cleanscript=None):
         self.agent = version
         self.rqueue = RedisQueue('seedQ', redisDB)
         self.cmd = cmd
-        self.source_opts = source
+        self.netoptions = netoptions
+        self.source_opts = utils.SOURCE_STDIN
+        if not netoptions is None:
+            self.source_opts = utils.SOURCE_NET
         self.seed_dir = input
         self.output = output
         self.afl = afl
@@ -155,6 +158,7 @@ class AFLExecutor(object):
         self.dbNum = redisDB
         self.deli = deli
         self.pkglen = pkglen
+        self.cleanScript = cleanscript
         self.filename = ".cur_input" if filename is None else filename
         self.mail = mail
         self.set_asan_cmd(asan_bin)
@@ -261,7 +265,7 @@ class AFLExecutor(object):
 
     def run_target(self, ce_path, skipEpisodeNum, targetBA, cur_input, tmp_dir):
         # Trigger linearlize to remove complicate expressions
-        q = executor.Executor(ce_path, self.cmd, self.source_opts, skipEpisodeNum, targetBA, self.dbNum, self.deli, self.pkglen, cur_input, self.output, tmp_dir, bitmap=self.bitmap)
+        q = executor.Executor(ce_path, self.cmd, self.netoptions, skipEpisodeNum, targetBA, self.dbNum, self.deli, self.pkglen, cur_input, self.output, tmp_dir, bitmap=self.bitmap)
         ret = q.run(self.state.timeout)
         logger.debug("Total=%d s, Emulation=%d s, Solver=%d s, Return=%d"
                      % (ret.total_time,
@@ -406,7 +410,8 @@ class AFLExecutor(object):
     def cleanup(self):
         try:
             self.export_state()
-            #shutil.rmtree(self.tmp_dir)
+            shutil.rmtree(self.tmp_dir)
+            os.system(self.cleanScript)
         except:
             pass
 
@@ -459,6 +464,8 @@ class AFLExecutor(object):
                     logger.debug("\nRun explore agent: ({}, {}) ".format(task[0], task[1]))
                     logger.debug("explore_agent: seedBufferQ size: %d" % seedBufferQ.qsize())
                     self.run_explore(follow_input, seedBufferQ)
+                    if not self.cleanScript is None:
+                        os.system(self.cleanScript)
             time.sleep(5)
             logger.debug("Sleeping...")
 
@@ -527,7 +534,8 @@ class AFLExecutor(object):
             cur_input_size = os.path.getsize(self.cur_exploit_input)
             if currOffset >= cur_input_size - 1:
                 self.increase_input_size(self.cur_exploit_input)
-
+            if not self.cleanScript is None:
+                os.system(self.cleanScript)
             # handle flipped branches
             target = os.path.basename(fp)[:len("id:......")]
             for testcase in q.get_testcases():
