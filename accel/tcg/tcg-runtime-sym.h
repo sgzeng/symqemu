@@ -121,6 +121,9 @@ DEF_HELPER_FLAGS_1(sym_notify_call, TCG_CALL_NO_RWG, void, i64)
 DEF_HELPER_FLAGS_1(sym_notify_return, TCG_CALL_NO_RWG, void, i64)
 DEF_HELPER_FLAGS_1(sym_notify_block, TCG_CALL_NO_RWG, void, i64)
 
+/* indirect jmp and indirect calls */
+DEF_HELPER_FLAGS_1(sym_notify_jmp, TCG_CALL_NO_RWG, void, i64)
+
 /* Garbage collection */
 DEF_HELPER_FLAGS_0(sym_collect_garbage, TCG_CALL_NO_RWG, void)
 
