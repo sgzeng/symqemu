@@ -5081,7 +5081,7 @@ else
 fi
 
 if test -e "${symcc_build}/SymRuntime-prefix/src/SymRuntime-build/libSymRuntime.so"; then
-    libs_cpu="-L${symcc_build}/SymRuntime-prefix/src/SymRuntime-build -lSymRuntime $libs_cpu"
+    libs_cpu="-L${symcc_build}/SymRuntime-prefix/src/SymRuntime-build -lSymRuntime -lhiredis $libs_cpu"
     libs_cpu="-Wl,-rpath,${symcc_build}/SymRuntime-prefix/src/SymRuntime-build $libs_cpu"
 else
     feature_not_found "SymCC (runtime)" "Point --symcc-build to the SymCC build directory"

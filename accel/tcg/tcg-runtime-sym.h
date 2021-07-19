@@ -117,12 +117,12 @@ DEF_HELPER_FLAGS_7(sym_setcond_i32, TCG_CALL_NO_RWG, ptr, env, i32, ptr, i32, pt
 DEF_HELPER_FLAGS_7(sym_setcond_i64, TCG_CALL_NO_RWG, ptr, env, i64, ptr, i64, ptr, s32, i64)
 
 /* Context tracking */
-DEF_HELPER_FLAGS_1(sym_notify_call, TCG_CALL_NO_RWG, void, i64)
+DEF_HELPER_FLAGS_2(sym_notify_call, TCG_CALL_NO_RWG, void, i64, i64)
 DEF_HELPER_FLAGS_1(sym_notify_return, TCG_CALL_NO_RWG, void, i64)
 DEF_HELPER_FLAGS_1(sym_notify_block, TCG_CALL_NO_RWG, void, i64)
 
 /* indirect jmp and indirect calls */
-DEF_HELPER_FLAGS_1(sym_notify_jmp, TCG_CALL_NO_RWG, void, i64)
+// DEF_HELPER_FLAGS_1(sym_notify_jmp, TCG_CALL_NO_RWG, void, i64)
 
 /* Garbage collection */
 DEF_HELPER_FLAGS_0(sym_collect_garbage, TCG_CALL_NO_RWG, void)
