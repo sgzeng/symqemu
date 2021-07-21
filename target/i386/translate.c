@@ -6592,7 +6592,8 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
                 tval &= 0xffffffff;
             }
             tcg_gen_movi_tl(s->T0, next_eip);
-            gen_helper_sym_notify_call(s->T0, tval);
+            tcg_gen_movi_tl(s->T1, tval);
+            gen_helper_sym_notify_call(s->T0, s->T1);
             gen_push_v(s, s->T0);
             gen_bnd_jmp(s);
             gen_jmp(s, tval);
