@@ -100,8 +100,14 @@ class Executor(object):
 
     def gen_env(self):
         symqemu_env = os.environ.copy()
+        symqemu_env["MAZERUNNER_DELIMITER"] = self.deli
+        symqemu_env["MAZERUNNER_SKIP_EPISODE_NUM"] = self.skipEpisodeNum
+        symqemu_env["MAZERUNNER_TARGET_BRANCH_ACTION"] = self.targetBA
+        symqemu_env["MAZERUNNER_PACKAGE_LENGTH"] = self.plen
+        symqemu_env["MAZERUNNER_redis_dbNum"] = self.dbNum
         if self.source_opts == SOURCE_NET:
             symqemu_env["SYMCC_INPUT_FILE"] = self.input_file
+            symqemu_env["MAZERUNNER_INPUT_SOURCE"] = SOURCE_STDIN
         symqemu_env["SYMCC_OUTPUT_DIR"] = self.testcase_dir
         symqemu_env["SYMCC_LOG_FILE"] = self.log_file
         symqemu_env["SYMCC_ENABLE_LINEARIZATION"] = "1"
