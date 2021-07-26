@@ -33,7 +33,7 @@ MAX_FLIP_NUM = 512
 # minimum number of hang files to increase timeout
 MIN_HANG_FILES = 30
 
-logger = logging.getLogger('qsym.afl')
+logger = logging.getLogger('mazerunner.afl')
 
 def get_score(testcase):
     # New coverage is the best
@@ -265,7 +265,7 @@ class AFLExecutor(object):
 
     def run_target(self, ce_path, skipEpisodeNum, targetBA, cur_input, tmp_dir):
         # Trigger linearlize to remove complicate expressions
-        q = executor.Executor(ce_path, self.cmd, self.netoptions, skipEpisodeNum, targetBA, self.dbNum, self.deli, self.pkglen, cur_input, self.output, tmp_dir, bitmap=self.bitmap)
+        q = executor.Executor(ce_path, self.cmd, self.netoptions, skipEpisodeNum, targetBA, self.dbNum, self.deli, self.pkglen, cur_input, self.my_dir, tmp_dir, bitmap=self.bitmap)
         ret = q.run(self.state.timeout)
         logger.debug("Total=%d s, Emulation=%d s, Solver=%d s, Return=%d"
                      % (ret.total_time,

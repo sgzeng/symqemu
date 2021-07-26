@@ -12,7 +12,7 @@ import socket
 
 from utils import *
 
-l = logging.getLogger('qsym.Executor')
+l = logging.getLogger('mazerunner.Executor')
 US_TO_S = float(1000 ** 2)
 LOG_SMT_HEADER = " [STAT] SMT:"
 
@@ -77,7 +77,7 @@ class Executor(object):
 
     @property
     def log_file(self):
-        return os.path.join(self.testcase_dir, "pin.log")
+        return os.path.join(self.testcase_dir, "sym.log")
 
     @property
     def testcase_directory(self):
@@ -101,18 +101,19 @@ class Executor(object):
     def gen_env(self):
         symqemu_env = os.environ.copy()
         symqemu_env["MAZERUNNER_DELIMITER"] = self.deli
-        symqemu_env["MAZERUNNER_SKIP_EPISODE_NUM"] = self.skipEpisodeNum
+        symqemu_env["MAZERUNNER_SKIP_EPISODE_NUM"] = str(self.skipEpisodeNum)
         symqemu_env["MAZERUNNER_TARGET_BRANCH_ACTION"] = self.targetBA
         symqemu_env["MAZERUNNER_PACKAGE_LENGTH"] = self.plen
-        symqemu_env["MAZERUNNER_redis_dbNum"] = self.dbNum
+        symqemu_env["MAZERUNNER_redis_dbNum"] = str(self.dbNum)
         if self.source_opts == SOURCE_NET:
             symqemu_env["SYMCC_INPUT_FILE"] = self.input_file
-            symqemu_env["MAZERUNNER_INPUT_SOURCE"] = SOURCE_STDIN
+            symqemu_env["MAZERUNNER_INPUT_SOURCE"] = str(SOURCE_NET)
         symqemu_env["SYMCC_OUTPUT_DIR"] = self.testcase_dir
-        symqemu_env["SYMCC_LOG_FILE"] = self.log_file
+        symqemu_env["SYMCC_LOG_FILE"] = os.path.abspath(os.path.join(self.qsym_output_dir, "rl.log"))
         symqemu_env["SYMCC_ENABLE_LINEARIZATION"] = "1"
         if self.bitmap:
             symqemu_env["SYMCC_AFL_COVERAGE_MAP"] = self.bitmap
+        # l.debug(symqemu_env)
         return symqemu_env
 
     def parse_network_interface(self, netoptions):
@@ -123,6 +124,19 @@ class Executor(object):
         p_str = netoptions.rpartition('://')[-1].split('/')[-1].strip()
         self.port = int(p_str)
 
+    def parse_input(self, input):
+        pkgs = []
+        pkg_len = int(self.plen)
+        if pkg_len > 0:
+            if pkg_len >= input.size():
+                pkgs.append(input)
+            else:
+                pkgs = [input[i:i+pkg_len] for i in range(0, len(input), pkg_len)]
+        else:
+            delimiter = bytes([int(self.deli, 16)])
+            pkgs = [p+delimiter for p in input.split(delimiter)]
+        return pkgs
+
     def netSend(self, input, MAXTRY=10):
         for i in range(0, MAXTRY):
             try:
@@ -131,7 +145,10 @@ class Executor(object):
                 else:
                     s = socket.socket(socket.AF_INET,socket.SOCK_DGRAM) #udp
                 s.connect((self.ip, self.port))
-                s.sendall(input)
+                pkgs = self.parse_input(input)
+                for p in pkgs:
+                    # l.debug("sending pkg: " + p.decode("utf-8"))
+                    s.sendall(input)
                 s.close()
                 return
             except ConnectionError:
