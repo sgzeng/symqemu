@@ -150,11 +150,15 @@ class Executor(object):
             except ConnectionError:
                 time.sleep(0.5)
                 continue
-        for p in pkgs:
-            # l.debug("sending pkg: " + p.decode("utf-8"))
-            s.sendall(p)
-            time.sleep(0.1)
-        s.close()
+        try:
+            for p in pkgs:
+                # l.debug("sending pkg: " + p.decode("utf-8"))
+                s.sendall(p)
+                time.sleep(0.1)
+        except ConnectionError as err:
+            l.error(err)
+        finally:
+            s.close()
 
     def run(self, timeout=None):
         cmd = self.gen_cmd(timeout)
