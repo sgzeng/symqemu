@@ -77,7 +77,7 @@ class Executor(object):
 
     @property
     def log_file(self):
-        return os.path.join(self.testcase_dir, "sym.log")
+        return os.path.join(self.pin_output_dir, "sym.log")
 
     @property
     def testcase_directory(self):
@@ -134,10 +134,11 @@ class Executor(object):
                 pkgs = [input[i:i+pkg_len] for i in range(0, len(input), pkg_len)]
         else:
             delimiter = bytes([int(self.deli, 16)])
-            pkgs = [p+delimiter for p in input.split(delimiter)]
+            pkgs = [p for p in input.split(delimiter)]
         return pkgs
 
     def netSend(self, input, MAXTRY=10):
+        pkgs = self.parse_input(input)
         for i in range(0, MAXTRY):
             try:
                 if self.transport_layer == 'tcp':
@@ -145,27 +146,26 @@ class Executor(object):
                 else:
                     s = socket.socket(socket.AF_INET,socket.SOCK_DGRAM) #udp
                 s.connect((self.ip, self.port))
-                pkgs = self.parse_input(input)
-                for p in pkgs:
-                    # l.debug("sending pkg: " + p.decode("utf-8"))
-                    s.sendall(input)
-                s.close()
-                return
+                break
             except ConnectionError:
-                time.sleep(1)
+                time.sleep(0.5)
                 continue
+        for p in pkgs:
+            # l.debug("sending pkg: " + p.decode("utf-8"))
+            s.sendall(p)
+            time.sleep(0.1)
+        s.close()
 
     def run(self, timeout=None):
-        cmd = self.gen_cmd(None)
+        cmd = self.gen_cmd(timeout)
         start_time = time.time()
 
         l.debug("Executing %s" % ' '.join(cmd))
-        proc = subprocess.Popen(cmd, shell=False, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env = self.gen_env())
+        with open(self.log_file, "w") as f:
+            proc = subprocess.Popen(cmd, shell=False, stdin=subprocess.PIPE, stdout=f, stderr=f, env = self.gen_env())
         if self.source_opts == SOURCE_NET:
-            socketClient = threading.Thread(target=self.netSend, name='socketClient', args=(self.stdin,))
-            socketClient.start()
+            self.netSend(self.stdin)
             proc.wait()
-            socketClient.join()
         else:
             stdout, stderr = proc.communicate(self.stdin)
         end_time = time.time()

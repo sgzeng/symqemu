@@ -23,7 +23,7 @@ import minimizer as minimizer
 import utils as utils
 import redis
 
-DEFAULT_TIMEOUT = 30
+DEFAULT_TIMEOUT = 10
 MAX_TIMEOUT = 10 * 60 # 10 minutes
 TARGET_FILE = utils.AT_FILE
 
