@@ -134,7 +134,7 @@ class Executor(object):
                 pkgs = [input[i:i+pkg_len] for i in range(0, len(input), pkg_len)]
         else:
             delimiter = bytes([int(self.deli, 16)])
-            pkgs = [p for p in input.split(delimiter)]
+            pkgs = [p.strip(b' \r\n')+b'\r\n' for p in input.split(delimiter)]
         return pkgs
 
     def netSend(self, input, MAXTRY=10):
