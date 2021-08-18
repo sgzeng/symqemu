@@ -181,8 +181,8 @@ class Executor(object):
 
     def read_log_file(self):
         if os.path.exists(self.log_file):
-            with open(self.log_file, "r") as f:
-                return f.read()
+            with open(self.log_file, "rb") as f:
+                return f.read().decode(errors='backslashreplace')
         else:
             return ""
 
