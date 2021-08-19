@@ -2245,6 +2245,7 @@ static inline void gen_jcc(DisasContext *s, int b,
 
     if (s->jmp_opt) {
         l1 = gen_new_label();
+        gen_jmp_im(s, s->base.pc_next);
         gen_jcc1(s, b, l1);
 
         gen_goto_tb(s, 0, next_eip);
