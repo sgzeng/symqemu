@@ -20,8 +20,8 @@ def read_bitmap_file(bitmap_file):
         return list(f.read())
 
 def write_bitmap_file(bitmap_file, bitmap):
-    with open(bitmap_file, "w") as f:
-        f.write(''.join(map(str, bitmap)))
+    with open(bitmap_file, "wb") as f:
+        f.write(bytes(bitmap))
 
 class TestcaseMinimizer(object):
     def __init__(self, cmd, afl_path, out_dir, qemu_mode, source, map_size=MAP_SIZE):
@@ -48,9 +48,16 @@ class TestcaseMinimizer(object):
         md5 = self.compute_hash(fn)
         self.seedsMap[md5] = fn
 
-    def check_testcase(self, testcase):
+    def is_new_content(self, testcase):
+        if not os.path.isfile(testcase):
+            return False
         md5 = self.compute_hash(testcase)
-        is_new_content = (md5 not in self.seedsMap)
+        has_new_content = (md5 not in self.seedsMap)
+        if has_new_content:
+            self.update_seedMap(testcase)
+        return has_new_content
+
+    def check_testcase(self, testcase):
         is_interesting = True
         # aflnwe haven't implemented showmap, any new seed will be count in
         if self.source_opts != SOURCE_NET:
@@ -70,23 +77,22 @@ class TestcaseMinimizer(object):
             ] + self.cmd
 
             cmd, stdin = fix_at_file(cmd, testcase)
-            with open(os.devnull, "wb") as devnull:
-               proc = sp.Popen(cmd, stdin=sp.PIPE, stdout=devnull, stderr=devnull)
-               proc.communicate(stdin)
+            proc = sp.Popen(cmd, stdin=sp.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            proc.communicate(stdin)
             this_bitmap = read_bitmap_file(self.temp_file)
-            is_interesting = self.is_interesting_testcase(this_bitmap, proc.returncode)
-        return is_new_content and is_interesting
+            is_interesting = self.is_interesting_testcase(this_bitmap)
+        return is_interesting
 
     def compute_hash(self, testcase):
         return hashlib.md5(open(testcase,'rb').read()).hexdigest()
 
-    def is_interesting_testcase(self, bitmap, returncode):
+    def is_interesting_testcase(self, bitmap):
         my_bitmap = self.bitmap
         my_bitmap_file = self.bitmap_file
 
         # Maybe need to port in C to speed up
         interesting = False
-        for i in range(len((bitmap))):
+        for i in range(len(bitmap)):
             old = my_bitmap[i]
             new = my_bitmap[i] | bitmap[i]
             if old != new:
