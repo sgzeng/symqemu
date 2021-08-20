@@ -162,13 +162,12 @@ class AFLExecutor(object):
         self.filename = ".cur_input" if filename is None else filename
         self.mail = mail
         self.set_asan_cmd(asan_bin)
-        self.tmp_exploit_dir = tempfile.mkdtemp()
-        self.tmp_explore_dir = tempfile.mkdtemp()
-        cmd, afl_path, qemu_mode = self.parse_fuzzer_stats()
-        self.minimizer = minimizer.TestcaseMinimizer(
-            cmd, afl_path, self.output, qemu_mode, self.source_opts)
+        self.tmp_dir = tempfile.mkdtemp()
         self.import_state()
         self.make_dirs()
+        cmd, afl_path, qemu_mode = self.parse_fuzzer_stats()
+        self.minimizer = minimizer.TestcaseMinimizer(
+            cmd, afl_path, self.my_dir, qemu_mode, self.source_opts)
         atexit.register(self.cleanup)
 
     @property
@@ -233,8 +232,7 @@ class AFLExecutor(object):
             self.asan_cmd = None
 
     def make_dirs(self):
-        mkdir(self.tmp_exploit_dir)
-        mkdir(self.tmp_explore_dir)
+        mkdir(self.tmp_dir)
         mkdir(self.my_queue)
         mkdir(self.my_hangs)
         mkdir(self.my_errors)
@@ -295,9 +293,11 @@ class AFLExecutor(object):
         loglines = log.splitlines()
         for line in loglines:
             i += 1
-            if "skip_episode_num_" in line and "seedNum" in loglines[i]:
-                priority = int(line.lstrip("[STAT] skip_episode_num_:").strip())
-                seedName = loglines[i].lstrip("[STAT] seedNum:").strip()
+            if i < 4:
+                continue
+            if "New testcase:" in line and "skip_episode_num_:" in loglines[i-4]:
+                priority = int(loglines[i-4].lstrip("[STAT] skip_episode_num_:").strip())
+                seedName = os.path.basename(line.lstrip("[INFO] New testcase:").strip())
                 priority_sq[seedName] = priority
         return priority_sq
 
@@ -410,7 +410,7 @@ class AFLExecutor(object):
     def cleanup(self):
         try:
             self.export_state()
-            shutil.rmtree(self.tmp_dir)
+            # shutil.rmtree(self.tmp_dir)
             os.system(self.cleanScript)
         except:
             pass
@@ -436,9 +436,9 @@ class AFLExecutor(object):
             task = self.rqueue.get_nowait()
             while task:
                 logger.debug("fetching a task from exploit agent: " + str(task))
-                self.minimizer.update_seedMap(task)
-                seedinfo = self.rqueue.db.hgetall(task)
-                seedBufferQ.put(seedinfo['priority'], seedinfo)
+                if self.minimizer.is_new_content(task):
+                    seedinfo = self.rqueue.db.hgetall(task)
+                    seedBufferQ.put(seedinfo['priority'], seedinfo)
                 task = self.rqueue.get_nowait()
             time.sleep(10)
 
@@ -493,27 +493,22 @@ class AFLExecutor(object):
 
         skipEpisodeNum = -1
         targetBA = "follow"
-        q, ret = self.run_target(self.ce_path, skipEpisodeNum, targetBA, self.cur_explore_input, self.tmp_explore_dir)
+        q, ret = self.run_target(self.ce_path, skipEpisodeNum, targetBA, self.cur_explore_input, self.tmp_dir)
         self.handle_by_return_code(ret, fp)
-        # priority_sq = self.get_seeds_priority(ret.log)
         index = self.state.tick()
         target = os.path.basename(fp)[:len("id:......")]
         # handle flipped branches
         for testcase in q.get_testcases():
-            # if not os.path.isfile(testcase) or os.path.basename(testcase) not in priority_sq:
-            if not os.path.isfile(testcase):
-                continue
-            if not self.minimizer.check_testcase(testcase):
+            if self.minimizer.is_new_content(testcase):
+                seedBufferQ.put((0, testcase))
+            if not os.path.isfile(testcase) or not self.minimizer.check_testcase(testcase):
                 # Remove if it's not interesting testcases
-                os.unlink(testcase)
                 continue
             index = self.state.tick()
-            filename = os.path.join(self.my_queue, "id:%06d,explore:%s,fliped%06d,time:%.0lf" 
-                                    % (index, target, 0, time.time()*1000))
+            filename = os.path.join(self.my_queue, "id:%06d,%s,time:%.0lf" 
+                                    % (index, target, time.time()*1000))
             shutil.copy2(testcase, filename)
-            self.minimizer.update_seedMap(filename)
             logger.debug("Generated explore seed to " + filename)
-            seedBufferQ.put((0, filename))
 
     def run_exploit(self, fp):
 
@@ -527,7 +522,7 @@ class AFLExecutor(object):
         # we don't want to go too deep
         index = self.state.tick()
         while flipNum < MAX_FLIP_NUM:
-            q, ret = self.run_target(self.ce_path, skipEpisodeNum, targetBA, self.cur_exploit_input, self.tmp_exploit_dir)
+            q, ret = self.run_target(self.ce_path, skipEpisodeNum, targetBA, self.cur_exploit_input, self.tmp_dir)
             self.handle_by_return_code(ret, fp)
             skipEpisodeNum, targetBA, currOffset = self.get_info_from_pin(ret.log)
             priority_sq = self.get_seeds_priority(ret.log)
@@ -539,20 +534,16 @@ class AFLExecutor(object):
             # handle flipped branches
             target = os.path.basename(fp)[:len("id:......")]
             for testcase in q.get_testcases():
-                if not os.path.isfile(testcase) or os.path.basename(testcase) not in priority_sq:
-                    continue
-                if not self.minimizer.check_testcase(testcase):
-                    # Remove if it's not interesting testcases
-                    os.unlink(testcase)
+                if self.minimizer.is_new_content(testcase) and os.path.basename(testcase) in priority_sq:
+                    self.rqueue.put(testcase)
+                    seedinfo = {'priority': priority_sq[os.path.basename(testcase)]}
+                    self.rqueue.db.hmset(testcase, seedinfo)
+                if not os.path.isfile(testcase) or not self.minimizer.check_testcase(testcase):
                     continue
                 filename = os.path.join(self.my_queue, "id:%06d,explore:%s-exploit,fliped%06d,time:%.0lf" 
                                         % (index, target, flipNum, time.time()*1000))
                 shutil.copy2(testcase, filename)
-                self.minimizer.update_seedMap(filename)
                 logger.debug("Generated explore seed to " + filename)
-                self.rqueue.put(filename)
-                seedinfo = {'priority': priority_sq[os.path.basename(testcase)]}
-                self.rqueue.db.hmset(filename, seedinfo)
                 index = self.state.tick()
 
             if skipEpisodeNum < 0 or targetBA == "0_0":
@@ -562,18 +553,14 @@ class AFLExecutor(object):
         
         new_seed = os.path.join(self.my_queue,
                     "id:%06d,exploit,fliped%06d,time:%.0lf" % (index, flipNum, time.time()*1000))
-        if self.minimizer.check_testcase(self.cur_exploit_input):
+        if self.minimizer.is_new_content(self.cur_exploit_input) and self.minimizer.check_testcase(self.cur_exploit_input):
             shutil.copy2(self.cur_exploit_input, new_seed)
-            self.minimizer.update_seedMap(new_seed)
             logger.debug("Generated exploit seed to " + new_seed)
-            # for debug
-            with open(os.path.join(self.output, "rl.log"), mode='a+') as mylog:
+            with open(os.path.join(self.my_dir, "rl.log"), mode='a+') as mylog:
                 mylog.write("Generated new seed to " + new_seed + "\n")
-            if flipNum > MAX_FLIP_NUM:
-                logger.debug("the exploit agent flipped too many branches, handled over to the explore agent")
-                self.rqueue.put(new_seed)
-                seedinfo = {'priority': 0}
-                self.rqueue.db.hmset(new_seed, seedinfo)
+            self.rqueue.put(new_seed)
+            seedinfo = {'priority': 0}
+            self.rqueue.db.hmset(new_seed, seedinfo)
                 
         if flipNum == 0:
             logger.debug("the exploit agent did not flip any branches, sleeping for 1s")

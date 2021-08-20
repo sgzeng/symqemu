@@ -77,7 +77,7 @@ class Executor(object):
 
     @property
     def log_file(self):
-        return os.path.join(self.pin_output_dir, "sym.log")
+        return os.path.join(self.last_testcase_dir, "sym.log")
 
     @property
     def testcase_directory(self):
@@ -105,9 +105,11 @@ class Executor(object):
         symqemu_env["MAZERUNNER_TARGET_BRANCH_ACTION"] = self.targetBA
         symqemu_env["MAZERUNNER_PACKAGE_LENGTH"] = self.plen
         symqemu_env["MAZERUNNER_redis_dbNum"] = str(self.dbNum)
+        symqemu_env["SYMCC_INPUT_FILE"] = self.input_file
         if self.source_opts == SOURCE_NET:
-            symqemu_env["SYMCC_INPUT_FILE"] = self.input_file
             symqemu_env["MAZERUNNER_INPUT_SOURCE"] = str(SOURCE_NET)
+        else:
+            symqemu_env["MAZERUNNER_INPUT_SOURCE"] = str(SOURCE_STDIN)
         symqemu_env["SYMCC_OUTPUT_DIR"] = self.testcase_dir
         symqemu_env["SYMCC_LOG_FILE"] = os.path.abspath(os.path.join(self.qsym_output_dir, "rl.log"))
         symqemu_env["SYMCC_ENABLE_LINEARIZATION"] = "1"
@@ -166,12 +168,12 @@ class Executor(object):
 
         l.debug("Executing %s" % ' '.join(cmd))
         with open(self.log_file, "w") as f:
-            proc = subprocess.Popen(cmd, shell=False, stdin=subprocess.PIPE, stdout=f, stderr=f, env = self.gen_env())
+            proc = subprocess.Popen(cmd, shell=False, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=f, env = self.gen_env())
         if self.source_opts == SOURCE_NET:
             self.netSend(self.stdin)
             proc.wait()
         else:
-            stdout, stderr = proc.communicate(self.stdin)
+            proc.communicate(self.stdin)
         end_time = time.time()
         return ExecutorResult(
                 start_time,
@@ -222,9 +224,9 @@ class Executor(object):
 
     def get_testcases(self):
         for name in sorted(os.listdir(self.testcase_dir)):
-            if name == "stat":
+            if "stat" in name:
                 continue
-            if name == "pin.log":
+            if 'log' in name:
                 continue
             path = os.path.join(self.testcase_dir, name)
             yield path
