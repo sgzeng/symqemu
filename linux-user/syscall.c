@@ -335,6 +335,7 @@ uint64_t lseek64_symbolized(int fd, uint64_t offset, int whence);
 int accept4_symbolized(int sockfd, struct sockaddr* addr, socklen_t* addrlen, int flags);
 ssize_t recvfrom_symbolized(int sockfd, void* buf, size_t len, int flags, struct sockaddr* src_addr, socklen_t* addrlen);
 ssize_t recvmsg_symbolized(int sockfd, struct msghdr *msg, int flags);
+void exit_symbolized(int return_code);
 
 static bitmask_transtbl fcntl_flags_tbl[] = {
   { TARGET_O_ACCMODE,   TARGET_O_WRONLY,    O_ACCMODE,   O_WRONLY,    },
@@ -7288,6 +7289,7 @@ static abi_long do_syscall1(void *cpu_env, int num, abi_long arg1,
 
         cpu_list_unlock();
         preexit_cleanup(cpu_env, arg1);
+        exit_symbolized(arg1);
         _exit(arg1);
         return 0; /* avoid warning */
     case TARGET_NR_read:
