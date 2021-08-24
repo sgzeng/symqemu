@@ -310,8 +310,8 @@ class AFLExecutor(object):
                 skip_episode_num_ = int(line.lstrip("[STAT] skip_episode_num_:").strip())
             if "target_BA:" in line:
                 target_BA = line.lstrip("[STAT] target_BA:").strip()
-            if "currOffset:" in line:
-                currOffset = int(line.lstrip("[STAT] currOffset:").strip())
+            if "inputOffset:" in line:
+                currOffset = int(line.lstrip("[STAT] inputOffset:").strip())
         return skip_episode_num_, target_BA, currOffset
 
     def increase_input_size(self, input):
