@@ -46,7 +46,7 @@ static inline void gen_tb_start(TranslationBlock *tb)
 
     TCGv_i64 block = tcg_const_i64((uint64_t)tb);
     // gen_helper_sym_notify_block(block);
-    gen_helper_sym_notify_block(tcg_const_i64((uint64_t)(tb->pc)));
+    gen_helper_sym_notify_block(tcg_const_i32((uint32_t)(tb->pc)));
     tcg_temp_free_i64(block);
 }
 
